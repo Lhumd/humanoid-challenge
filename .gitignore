@@ -1,0 +1,31 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Raw phone clips are too large for git (stack_main.mp4 is 187 MB); the hand-labelled
+# data/raw/*_events.json files are small and stay tracked.
+data/raw/*.mp4
+data/raw/*.mov
+
+# Regenerable intermediates: sim episodes (7-8 MB each), self-improvement rounds,
+# development runs and synthetic-data artifacts.
+data/processed/*_episodes.npz
+data/processed/*_episodes.json
+data/processed/*_self_improve/
+data/processed/synthetic*
+data/dev/
+
+# Scaling-study checkpoints, run logs and smoke-test leftovers.
+outputs/**/scaling/
+outputs/**/*.log
+outputs/integration/
+outputs/replay_synthetic/
+outputs/smoke_stack.*
+
+# World-model rollout caches (regenerable by scripts/07_world_model.py).
+outputs/**/rollouts_*.npz
+
+# Camera-policy episode cache (260 MB, regenerable by scripts/08_vision_bc.py data).
+outputs/**/camera_episodes.npz
+outputs/**/*.log

@@ -1,0 +1,27 @@
+{
+  "n_eval": 100,
+  "noise": 0.1,
+  "perturb_frac": 0.5,
+  "base_episodes": null,
+  "rounds": [
+    {
+      "round": 0,
+      "dataset_episodes": 582,
+      "nominal": 0.89,
+      "perturbed": 0.89
+    },
+    {
+      "round": 1,
+      "explore_seeds": [
+        50000,
+        50149
+      ],
+      "explore_success": 0.8666666666666667,
+      "added": 130,
+      "added_pushed": 63,
+      "dataset_episodes": 712,
+      "nominal": 0.94,
+      "perturbed": 0.85
+    }
+  ]
+}
