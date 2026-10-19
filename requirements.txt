@@ -1,5 +1,5 @@
 # Python 3.11. Install with: pip install -r requirements.txt
-# Stages 1-8 run on a CPU; stage 9 (SmolVLA student) needs a CUDA GPU. lerobot 0.4.4 pins torch < 2.11;
+# Every stage runs on a CPU except stage 9 (SmolVLA student), which needs a CUDA GPU. lerobot 0.4.4 pins torch < 2.11;
 # LeRobot 0.6 needs Python 3.12.
 numpy==2.2.6
 scipy==1.17.1

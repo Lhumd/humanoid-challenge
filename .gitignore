@@ -23,8 +23,6 @@ outputs/integration/
 outputs/replay_synthetic/
 outputs/smoke_stack.*
 
-# World-model rollout caches (regenerable by scripts/07_world_model.py).
-outputs/**/rollouts_*.npz
 
 # Camera-policy episode cache (260 MB, regenerable by scripts/08_vision_bc.py data).
 outputs/**/camera_episodes.npz

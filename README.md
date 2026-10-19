@@ -83,20 +83,9 @@ Did not work, or only partly:
 - **SmolVLA fine-tuning in LeRobot 0.4.4 needed three fixes.** Its loss mask for chunk steps past the end of an episode reads a misspelt key and is never applied, so I train on the teacher's full chunks instead. Building the model without downloading the base VLM leaves the VLM in float32, and the action expert's weights are bfloat16, so AdamW rounded most updates late in the schedule to zero; I cast the VLM back to bfloat16 and train the expert in float32. Leaving the 25 zero-padded action dimensions out of the loss, which looks like a clean-up, would let their velocities drift although inference integrates them.
 - **Jaco** (three-finger hand) never holds the cube with the same plan; it would need its own grasp. Sawyer does not load under MuJoCo 3.3.5.
 
-## Where VLAs and world models fit
-
-The VLA is post-trained by distillation from the state policy (above), with the simulator as the bridge: it renders the cameras the VLA needs and knows the cube positions the teacher needs. A natural next step is a harder test that only vision can solve, such as moving cube B while cube A is carried.
-
-I did try one world-model experiment (`hc/world_model.py`, `scripts/07_world_model.py`): an action-conditioned dynamics model on the policy state, trained on the sim-verified episodes plus 300 rollouts of four policies of different quality (so it also sees failures), then used as a learned simulator to score those four policies offline.
-- **Short horizons work.** Over about 10 steps it predicts the gripper and a held cube to about 1 cm.
-- **As a simulator it fails.** It predicts 0 %, 0 %, 0 % and 4 % stacking success for policies that really reach 1 %, 17 %, 34 % and 89 %. Inside the model, cubes that should rest drift (cube B moves a median 2.6 cm over 300 steps although it never moves), so the placement misses by more than the 1.5 cm a stack needs. For a resting cube it is worse than predicting no motion at all.
-- **What I would try next:** keep a cube still unless the gripper touches it, train on multi-step losses, and use an ensemble whose disagreement flags rollouts that cannot be trusted.
-
-![world model as a learned simulator: predicted vs true success](outputs/stack_main/world_model/predicted_vs_true_success.png)
-
 ## Run it
 
-Python 3.11. Stages 1-8 run on a CPU; the SmolVLA student (stage 9) needs a CUDA GPU. I ran stage 9 on one A100 80 GB: round-0 training takes 16 min (3,000 updates at batch 32, peak 7 GB of GPU memory, so a 16 GB card is enough), each DAgger round about 30 min (13 min collecting 200 episodes, 8 min training, 10 min evaluating), and evaluating 100 layouts in both conditions about 15 min. Everything in this README, including the controls, took about 5 A100-hours. Large files (rendered datasets, checkpoints) go to `$HC_VLA_ROOT` (default `/var/tmp/humanoid_vla`).
+Python 3.11. Every stage runs on a CPU except the SmolVLA student (stage 9), which needs a CUDA GPU. I ran stage 9 on one A100 80 GB: round-0 training takes 16 min (3,000 updates at batch 32, peak 7 GB of GPU memory, so a 16 GB card is enough), each DAgger round about 30 min (13 min collecting 200 episodes, 8 min training, 10 min evaluating), and evaluating 100 layouts in both conditions about 15 min. Everything in this README, including the controls, took about 5 A100-hours. Large files (rendered datasets, checkpoints) go to `$HC_VLA_ROOT` (default `/var/tmp/humanoid_vla`).
 
 ```bash
 pip install -r requirements.txt     # torch CPU wheels are enough
@@ -119,14 +108,13 @@ Stage by stage:
 | behaviour cloning | `scripts/04_train_bc.py` | `data/processed/stack_main_bc.pt` |
 | evaluation | `scripts/05_evaluate.py --n-eval 100 --scaling` | `outputs/stack_main/eval/` |
 | self-improvement | `scripts/06_self_improve.py` | `outputs/stack_main/eval/self_improve.json` |
-| world model | `scripts/07_world_model.py` | `outputs/stack_main/world_model/` |
 | camera policy (first attempt) | `scripts/08_vision_bc.py data`, then `train`, then `eval` | `outputs/stack_main/vision/` |
 | SmolVLA student | `scripts/09_distill_vla.py teacher-data`, `train --round 0`, `dagger`, `eval --ckpt r3` (see the script's docstring) | `outputs/stack_main/vla/` |
 
 ## Layout
 
 ```
-hc/            pipeline modules (types, sim, tracking, lifting, segmentation, retarget, datagen, policy, evaluate, world_model, vision_policy,
+hc/            pipeline modules (types, sim, tracking, lifting, segmentation, retarget, datagen, policy, evaluate, vision_policy,
                vla_env, vla_student, distill, vla_train)
 scripts/       numbered entry points and run_all.sh
 tests/         pytest, including a synthetic round trip with known ground truth

@@ -76,3 +76,20 @@ class StudentCameras:
         if self.renderer is not None:
             self.renderer.close()
             self.renderer = None
+
+
+def apply_visual_stress(env, stress: str) -> None:
+    """Change what the cameras see (not the physics) after a reset; the hard reset of the next
+    episode restores the model."""
+    m = env.sim.model._model
+    if stress == "dim":
+        m.light_diffuse[:] *= 0.35
+        m.vis.headlight.diffuse[:] *= 0.35
+        m.vis.headlight.ambient[:] *= 0.35
+    elif stress == "table":
+        g = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "table_visual")
+        m.geom_matid[g] = -1
+        m.geom_rgba[g] = [0.45, 0.30, 0.18, 1.0]
+    elif stress == "camera":
+        m.cam_pos[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_CAMERA, "agentview")] += [0.0, 0.05, 0.03]
+    env.sim.forward()

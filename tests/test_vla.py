@@ -3,10 +3,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hc.distill import (RECORD_STRIDE, DatasetWriter, EpisodeSpec, RolloutPool, _apply_visual_stress,
-                        dagger_specs, teacher_specs)
+from hc.distill import RECORD_STRIDE, DatasetWriter, EpisodeSpec, RolloutPool, dagger_specs, teacher_specs
 from hc.sim import ACTION_DIM, make_env, reset
-from hc.vla_env import CHUNK, STATE_DIM, StudentCameras, privileged, student_state
+from hc.vla_env import CHUNK, STATE_DIM, StudentCameras, apply_visual_stress, privileged, student_state
 from hc.vla_train import FINAL_LR_RATIO, labels, lr_lambda, open_dataset, sample_weights, stats_from
 
 TEACHER = Path("data/processed/stack_main1600_bc.pt")
@@ -127,7 +126,7 @@ def test_visual_stresses_change_the_pixels_not_the_state():
     for stress in ("dim", "table", "camera"):
         stressed_obs = reset(env, 1_000_002)
         cams.attach(env)
-        _apply_visual_stress(env, stress)
+        apply_visual_stress(env, stress)
         assert np.abs(cams.render().astype(float) - base).mean() > 3.0, stress
         np.testing.assert_allclose(student_state(stressed_obs), student_state(obs))
     cams.close()

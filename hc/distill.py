@@ -26,13 +26,12 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import mujoco
 import numpy as np
 
 from hc.evaluate import AFTER_STEPS, HOLD_STEPS, HORIZON, MIN_CUBE_GAP, PERTURB_RANGE, sample_perturbation
 from hc.sim import ACTION_DIM, displace_cube, make_env, policy_features, reset
 from hc.vla_env import (CAMERAS, CHUNK, IMAGE_KEYS, IMAGE_SIZE, PRIVILEGED_DIM, STATE_DIM, TASK,
-                        StudentCameras, privileged, student_state)
+                        StudentCameras, apply_visual_stress, privileged, student_state)
 
 RECORD_STRIDE = 2
 N_ACTION_STEPS = 4
@@ -113,23 +112,6 @@ def _teleport_cube(env, cube: str, xyz: np.ndarray) -> None:
     env.sim.forward()
 
 
-def _apply_visual_stress(env, stress: str) -> None:
-    """Change what the cameras see (not the physics) after a reset; the hard reset of the next
-    episode restores the model."""
-    m = env.sim.model._model
-    if stress == "dim":
-        m.light_diffuse[:] *= 0.35
-        m.vis.headlight.diffuse[:] *= 0.35
-        m.vis.headlight.ambient[:] *= 0.35
-    elif stress == "table":
-        g = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "table_visual")
-        m.geom_matid[g] = -1
-        m.geom_rgba[g] = [0.45, 0.30, 0.18, 1.0]
-    elif stress == "camera":
-        m.cam_pos[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_CAMERA, "agentview")] += [0.0, 0.05, 0.03]
-    env.sim.forward()
-
-
 def _physical_stress(env, obs: dict, stress: str, seed: int, a_start: np.ndarray) -> None:
     """move_b: cube B moves 3-5 cm; drop: cube A lands back on the table 3-5 cm from where it started.
     Positions within MIN_CUBE_GAP of the other cube are redrawn."""
@@ -168,7 +150,7 @@ def _env_worker(conn, teacher_path: str, image_size: int) -> None:
             obs = reset(env, seed)
             cams.attach(env)
             if stress in ("dim", "table", "camera"):
-                _apply_visual_stress(env, stress)
+                apply_visual_stress(env, stress)
             ensembler.reset()
             held, t, stress_step = 0, 0, None
             a_start = obs["cubeA_pos"].copy()
@@ -232,10 +214,11 @@ class _Slot:
         if self.spec.record and self.frames["state"]:
             frames = {k: np.stack(v) for k, v in self.frames.items()}
         return EpisodeResult(
-            self.spec.seed, self.spec.driver, self.spec.perturbed, success, self.t,
-            self.spec.switch_step, self.takeover_step, self.takeover_reason, self.student_steps,
-            float(np.mean(self.arm_err)) if self.arm_err else float("nan"),
-            float(np.mean(self.grip_err)) if self.grip_err else float("nan"), frames)
+            seed=self.spec.seed, driver=self.spec.driver, perturbed=self.spec.perturbed, success=success,
+            steps=self.t, switch_step=self.spec.switch_step, takeover_step=self.takeover_step,
+            takeover_reason=self.takeover_reason, student_steps=self.student_steps,
+            arm_l1=float(np.mean(self.arm_err)) if self.arm_err else float("nan"),
+            grip_disagree=float(np.mean(self.grip_err)) if self.grip_err else float("nan"), frames=frames)
 
 
 class RolloutPool:
@@ -462,7 +445,7 @@ class DatasetWriter:
 
 def round_seeds(round_index: int, n: int) -> list[int]:
     """Training layouts for DAgger round `round_index` (round 0 = teacher data). Disjoint from
-    datagen (0-1599), self-improvement (50000+), world model (60000+) and evaluation (1e6+)."""
+    datagen (0-1599), self-improvement (50000+) and evaluation (1e6+)."""
     start = 70_000 + 2_000 * round_index
     return list(range(start, start + n))
 
