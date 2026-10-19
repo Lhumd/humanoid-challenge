@@ -1,0 +1,44 @@
+{
+ "pushed_0": {
+  "open-loop replay of my demos": false,
+  "state BC (sees cube poses)": true,
+  "camera CNN (first try)": false,
+  "SmolVLA, offline distillation": false,
+  "SmolVLA, after DAgger": true
+ },
+ "pushed_3": {
+  "open-loop replay of my demos": false,
+  "state BC (sees cube poses)": true,
+  "camera CNN (first try)": false,
+  "SmolVLA, offline distillation": false,
+  "SmolVLA, after DAgger": true
+ },
+ "pushed_9": {
+  "open-loop replay of my demos": false,
+  "state BC (sees cube poses)": true,
+  "camera CNN (first try)": false,
+  "SmolVLA, offline distillation": false,
+  "SmolVLA, after DAgger": true
+ },
+ "nominal_7": {
+  "open-loop replay of my demos": true,
+  "state BC (sees cube poses)": true,
+  "camera CNN (first try)": false,
+  "SmolVLA, offline distillation": false,
+  "SmolVLA, after DAgger": true
+ },
+ "nominal_12": {
+  "open-loop replay of my demos": true,
+  "state BC (sees cube poses)": true,
+  "camera CNN (first try)": false,
+  "SmolVLA, offline distillation": true,
+  "SmolVLA, after DAgger": true
+ },
+ "nominal_15": {
+  "open-loop replay of my demos": true,
+  "state BC (sees cube poses)": true,
+  "camera CNN (first try)": false,
+  "SmolVLA, offline distillation": true,
+  "SmolVLA, after DAgger": true
+ }
+}

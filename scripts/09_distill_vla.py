@@ -309,8 +309,8 @@ STRESS_LABELS = {"move_b": "cube B moved\nduring carry", "drop": "cube A slips\n
 
 def plot_stress(plt) -> None:
     """Success with Wilson 95 % intervals per stress test, nominal for reference."""
-    tests = [t for t in ("nominal",) + STRESSES
-             if any((OUT / f"eval_{a}_{t}.json").exists() for a, _, _ in STRESS_ARMS)]
+    tests = ["nominal"] + [t for t in STRESSES
+                           if any((OUT / f"eval_{a}_{t}.json").exists() for a, _, _ in STRESS_ARMS)]
     if len(tests) < 2:
         return
 
@@ -331,14 +331,23 @@ def plot_stress(plt) -> None:
         ax.bar(xs, 100 * rates, width, yerr=100 * err, capsize=2, color=colour, label=label)
     ax.set_xticks(x, ["nominal"] + [STRESS_LABELS[t] for t in tests[1:]], fontsize=8)
     ax.set_ylabel("stacking success, 100 held-out layouts (%)")
-    ax.set_ylim(0, 105)
+    ax.set_ylim(0, 118)
     visual = [i for i, t in enumerate(tests) if t in ("dim", "table", "camera")]
     if visual:  # tests right of the line change only the pixels, so the teacher is unaffected
         ax.axvline(visual[0] - 0.5, color="#999999", lw=0.8, ls=":")
-    ax.legend(fontsize=8, ncol=4, loc="lower left")
+    ax.legend(fontsize=8, ncol=4, loc="upper center", frameon=False)
     fig.tight_layout()
     fig.savefig(OUT / "stress.png", dpi=150)
     print(f"saved {OUT / 'stress.png'}", flush=True)
+    rows = ["| test | " + " | ".join(label for _, label, _ in STRESS_ARMS) + " |",
+            "|---|" + "---|" * len(STRESS_ARMS)]
+    for t in tests:
+        cells = [get(arm, t) for arm, _, _ in STRESS_ARMS]
+        rows.append(f"| {'nominal' if t == 'nominal' else STRESS_LABELS[t].replace(chr(10), ' ')} | " + " | ".join(
+            f"{100 * c['rate']:.0f} % [{100 * c['ci95'][0]:.0f}-{100 * c['ci95'][1]:.0f}]" if c else "-"
+            for c in cells) + " |")
+    (OUT / "stress_table.md").write_text("\n".join(rows) + "\n")
+    print("\n".join(rows), flush=True)
 
 
 def main() -> None:

@@ -33,10 +33,37 @@ The BC policy reads the cube poses from the simulator, which a real robot would 
 - **Labels.** The teacher can be queried at any state, because the simulator always knows where the cubes are. Every recorded frame is labelled with the teacher's own predicted 8-step action chunk at that state, whoever was driving the robot.
 - **Round 0 (offline).** The teacher drives 400 layouts with action noise (σ = 0.1 on the arm, as in the data multiplication) and I keep the 374 that stack: 33k frames, 3,000 updates. The student stacks 83 % of held-out layouts and 63 % with the push.
 - **DAgger rounds (on-policy).** In each of 3 rounds the student drives 200 new layouts and the teacher labels every state it visits; a share of episodes (50 %, 25 %, 0 %) hands over to the teacher midway so the data also shows recoveries from the student's own mistakes. All rounds are aggregated and the student is fine-tuned for 1,500 more updates each round. Success goes 96/80 %, 98/90 % and 96/96 % (nominal/pushed, 50 layouts) and reaches 98/94 % on the 100 evaluation layouts after round 3.
-- **The control that changed my reading.** An offline student trained on as much teacher data as DAgger collected (1,112 noisy teacher rollouts, 100k frames against DAgger's 92k) for as many updates (7,500) reaches 99/94 %. So at equal data and training, rollouts of the noisy teacher were as good as the student's own states: what lifted the student from 83/63 % was more labelled data and more updates (three times the frames, 2.5 times the updates), not the on-policy part; this run does not separate the two. A likely reason is the action noise, which already puts recovery states into the teacher's data, the effect DAgger would otherwise add (DART, Laskey et al. 2017).
+- **The control that changed my reading.** An offline student trained on as much teacher data as DAgger collected (1,112 noisy teacher rollouts, 100k frames against DAgger's 92k) for as many updates (7,500) reaches 99/94 %. So at equal data and training, rollouts of the noisy teacher were as good as the student's own states on these two tests: what lifted the student from 83/63 % was more labelled data and more updates (three times the frames, 2.5 times the updates), not the on-policy part; this run does not separate the two. The stress tests below show where the on-policy part does matter: recovering from a slip. A likely reason is the action noise, which already puts recovery states into the teacher's data, the effect DAgger would otherwise add (DART, Laskey et al. 2017).
 - **It uses its eyes.** With both camera images replaced by black frames the round-3 student stacks 0 of 100 layouts.
 
 ![success with 95 % intervals for every arm (left), and against the number of labelled frames (right)](outputs/stack_main/vla/success.png)
+
+Side-by-side videos of all five methods (replay, BC teacher, first camera CNN, SmolVLA offline, SmolVLA after DAgger) on the same layouts: [pushed](outputs/stack_main/vla/compare_pushed.mp4), [nominal](outputs/stack_main/vla/compare_nominal.mp4) (`scripts/10_compare_videos.py`).
+
+## Stress tests beyond the push
+
+The push tests one thing: finding a cube that moved early. I added seven more changes, each on the same 100 held-out layouts and none seen in training (`scripts/09_distill_vla.py eval --stress <test>`, `hc/distill.py`):
+- four physical ones: cube B moves 3-5 cm once cube A has been lifted, so the placement must be re-aimed; cube A drops back onto the table 3-5 cm away after the lift, so the robot must open and grasp again; noise of σ = 0.15 on every arm command, 1.5 times the training noise; and layouts within ±14 cm instead of the ±8 cm used for training;
+- three that change only the pixels, so the teacher is unaffected: lights dimmed to 35 %, a brown table, and the agentview camera moved 5 cm sideways and 3 cm up.
+
+| test | teacher (cube poses) | student, offline round 0 | student, offline data-matched | student, DAgger round 3 |
+|---|---|---|---|---|
+| nominal | 94 % [88-97] | 83 % [74-89] | 99 % [95-100] | 98 % [93-99] |
+| cube B moved during carry | 96 % [90-98] | 77 % [68-84] | 97 % [92-99] | 96 % [90-98] |
+| cube A slips after lift | 43 % [34-53] | 8 % [4-15] | 43 % [34-53] | 78 % [69-85] |
+| action noise σ = 0.15 | 83 % [74-89] | 46 % [37-56] | 68 % [58-76] | 73 % [64-81] |
+| wider layouts ±14 cm | 79 % [70-86] | 36 % [27-46] | 65 % [55-74] | 66 % [56-75] |
+| dim lights | 94 % [88-97] | 76 % [67-83] | 93 % [86-97] | 91 % [84-95] |
+| brown table | 94 % [88-97] | 73 % [64-81] | 91 % [84-95] | 90 % [83-94] |
+| camera moved 5 cm | 94 % [88-97] | 38 % [29-48] | 72 % [63-80] | 83 % [74-89] |
+
+![success per stress test with 95 % intervals; right of the dotted line only the images change](outputs/stack_main/vla/stress.png)
+
+- **Recovery is where DAgger pays off.** After a slip the DAgger student grasps again and stacks 78 % of layouts; the data-matched offline student and the teacher itself stack 43 %. DAgger's data contains the student's own failed grasps labelled by the teacher, states that teacher rollouts rarely reach, which is the likely reason.
+- **Re-aiming the placement works:** with cube B moved during the carry, the two final students stack 96-97 %, like the teacher.
+- **The final students' cameras cope with light and colour** (90-93 % with dim lights or a brown table) but lose more when the camera itself moves (83 % for DAgger, 72 % for the offline student): every training image came from one camera pose.
+- **Outside the training range the students lose more than the teacher**: 66 % against 79 % on wider layouts and 73 % against 83 % with action noise. The teacher reads exact positions; the students only saw images of layouts within ±8 cm and of motions with less noise.
+- The offline round-0 student (a third of the data) is the weakest on every test.
 
 ## How it works
 
@@ -79,7 +106,7 @@ Did not work, or only partly:
 - **The 15-second clip** (dark table, strong lamp) only had the hand detected in 39 % of frames and is not used for training.
 - **Self-improvement**, starting from the 582-episode policy (roll out the policy on 150 new layouts with exploration noise, keep the 130 that stacked, retrain on all 712 episodes) moved success from 89 % to 94 % on undisturbed layouts and from 89 % to 85 % with the push. With 100 evaluation layouts the standard error is about 4 points, so one round did not clearly help or hurt.
 - **A first camera-based policy trained from scratch got 0 of 50 layouts**: a small CNN on one 84x84 `agentview` image, 157 rendered episodes, about 1,000 updates on a CPU (`hc/vision_policy.py`, `scripts/08_vision_bc.py`). The arm came down near the cubes and hovered beside them. The distilled SmolVLA replaced it: a pretrained model, a wrist camera, and about 7 times more labelled frames and updates, on a GPU.
-- **DAgger was not needed here.** At equal data the offline student from noisy teacher rollouts matched it (above). The student's own success while collecting did rise from 70 % to 88 % over the rounds, so its states were not wasted, but they were not better than the teacher's.
+- **DAgger mattered only for recovery.** At equal data the offline student from noisy teacher rollouts matched it on nominal layouts and under the push, but after a slip the DAgger student stacks 78 % against 43 % (stress tests above).
 - **SmolVLA fine-tuning in LeRobot 0.4.4 needed three fixes.** Its loss mask for chunk steps past the end of an episode reads a misspelt key and is never applied, so I train on the teacher's full chunks instead. Building the model without downloading the base VLM leaves the VLM in float32, and the action expert's weights are bfloat16, so AdamW rounded most updates late in the schedule to zero; I cast the VLM back to bfloat16 and train the expert in float32. Leaving the 25 zero-padded action dimensions out of the loss, which looks like a clean-up, would let their velocities drift although inference integrates them.
 - **Jaco** (three-finger hand) never holds the cube with the same plan; it would need its own grasp. Sawyer does not load under MuJoCo 3.3.5.
 
