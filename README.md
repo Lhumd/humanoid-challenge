@@ -1,6 +1,6 @@
 # From my hand to a robot arm: stacking from one phone video
 
-I filmed my right hand stacking one small box on another with my phone (2 minutes, 7 stacks). This repo turns that video into a robot policy that stacks cubes in simulation (robosuite `Stack`, Franka Panda), and then distils that policy into a vision-language-action model (SmolVLA) that sees only two cameras, the robot's own pose and the instruction "put the red cube on the green cube". Every robot trajectory used for training descends from my own demonstrations; there is no scripted expert anywhere in the loop.
+I filmed my right hand stacking one small box on another with my phone (2 minutes, 7 stacks). This repo turns that video into a robot policy that stacks cubes in simulation (robosuite `Stack`, Franka Panda), and then distils that policy into a vision-language-action model (SmolVLA) that sees only two cameras, the robot's own pose and the instruction "put the red cube on the green cube". Every robot trajectory used for training starts from my own demonstrations. No external dataset is in my training sets; other people's data enters only through pretrained weights (MediaPipe's hand model, and SmolVLA, which was pretrained on community robot data and fine-tuned on LIBERO).
 
 ![left: my phone video with the tracked hand; right: the robot executing the same repetition](assets/side_by_side.gif)
 
