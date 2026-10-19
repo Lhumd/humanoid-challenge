@@ -87,6 +87,13 @@ Did not work, or only partly:
 
 Python 3.11. Every stage runs on a CPU except the SmolVLA student (stage 9), which needs a CUDA GPU. I ran stage 9 on one A100 80 GB: round-0 training takes 16 min (3,000 updates at batch 32, peak 7 GB of GPU memory, so a 16 GB card is enough), each DAgger round about 30 min (13 min collecting 200 episodes, 8 min training, 10 min evaluating), and evaluating 100 layouts in both conditions about 15 min. Everything in this README, including the controls, took about 5 A100-hours. Large files (rendered datasets, checkpoints) go to `$HC_VLA_ROOT` (default `/var/tmp/humanoid_vla`).
 
+The trained student (98 % / 94 %) is attached to the release [`smolvla-stack-r3`](https://github.com/Lhumd/humanoid-challenge/releases/tag/smolvla-stack-r3) (1.1 GB), so it can be evaluated without retraining:
+
+```bash
+gh release download smolvla-stack-r3 -R Lhumd/humanoid-challenge -D /var/tmp/humanoid_vla/ckpt/r3
+python scripts/09_distill_vla.py eval --ckpt r3 --n 100
+```
+
 ```bash
 pip install -r requirements.txt     # torch CPU wheels are enough
 pytest -q
